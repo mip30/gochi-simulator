@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Raising Sim (10y)</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <h1>Raising Sim (10 years / monthly)</h1>
+      <div class="row">
+        <button id="btnNew">New Game</button>
+        <button id="btnSave">Save</button>
+        <button id="btnLoad">Load</button>
+        <button id="btnExport">Export</button>
+        <label class="toggle">
+          <input type="checkbox" id="chkGemini" />
+          Use Gemini highlight
+        </label>
+      </div>
+      <div class="row small">
+        <span>Gemini Worker URL:</span>
+        <input id="inpWorkerUrl" placeholder="https://YOUR-WORKER.your-subdomain.workers.dev/generate" />
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="panel">
+        <h2>Characters (1–4)</h2>
+        <div id="charList" class="list"></div>
+        <div class="row">
+          <button id="btnAddChar">Add character</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Relationships (enabled when 2+)</h2>
+        <div id="relBox" class="list"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Month</h2>
+        <div id="timeBox" class="row"></div>
+        <div id="moneyBox" class="row"></div>
+        <h3>Schedules (choose for each character)</h3>
+        <div id="scheduleBox" class="list"></div>
+        <div class="row">
+          <button id="btnRun">Run this month</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Stats</h2>
+        <div id="statsBox" class="list"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="modalRoot"></div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
