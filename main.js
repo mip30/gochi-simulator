@@ -1,13 +1,15 @@
 import {
   newGameState, newCharacter, MAX_CHARS,
-  monthToYearMonth, MBTI_LIST, zodiacOptions,
+  monthToYearMonth, MBTI_LIST,
+  getZodiacFromBirthday
 } from "./sim/state.js";
 import { runOneMonth, applyChoice } from "./sim/engine.js";
 import { renderAll } from "./ui/render.js";
 import { showRelationsModal } from "./ui/relations_modal.js";
 import { appendLogs, clearLogs } from "./ui/log.js";
 
-const WORKER_URL = "https://gochi-simulator.madeinpain30.workers.dev/"; // 내장
+// ✅ Worker URL 자동 고정
+const WORKER_URL = "https://gochi-simulator.madeinpain30.workers.dev/";
 
 const LS_KEY = "raising_sim_save_v3";
 const saveToLocal = (s) => localStorage.setItem(LS_KEY, JSON.stringify(s));
@@ -45,13 +47,16 @@ const handlers = {
     if (!state.setupUnlocked) return;
     if (state.characters.length >= MAX_CHARS) return;
 
-    state.characters.push(newCharacter({
+    const nc = newCharacter({
       name: `캐릭터${state.characters.length + 1}`,
       mbti: "INFP",
-      zodiacBlessing: null,
       birthM: 1,
       birthD: 1,
-    }));
+    });
+    // ✅ 생일 기반 별자리 자동
+    nc.zodiac = getZodiacFromBirthday(nc.birthday.m, nc.birthday.d);
+
+    state.characters.push(nc);
     rerender();
   },
 
@@ -74,14 +79,14 @@ const handlers = {
     const c = state.characters.find(x => x.id === id);
     if (!c) return;
 
-    // setup only
     if (patch.name != null) c.name = String(patch.name).slice(0, 20) || c.name;
     if (patch.mbti != null) c.mbti = patch.mbti;
+
+    // ✅ 생일 변경 시 별자리 자동 갱신
     if (patch.birthM != null) c.birthday.m = Number(patch.birthM);
     if (patch.birthD != null) c.birthday.d = Number(patch.birthD);
 
-    // 별자리 축복은 “고정 선택”도 가능하게(원하면)
-    if (patch.zodiac != null) c.zodiac = patch.zodiac;
+    c.zodiac = getZodiacFromBirthday(c.birthday.m, c.birthday.d);
 
     rerender();
   },
@@ -89,9 +94,9 @@ const handlers = {
   onRemoveChar: (id) => {
     if (!state.setupUnlocked) return;
     if (state.characters.length === 1) return;
+
     state.characters = state.characters.filter(c => c.id !== id);
 
-    // 관계도 정리
     const nextRel = {};
     for (const k of Object.keys(state.relations)) {
       const [from, to] = k.split("->");
@@ -103,7 +108,6 @@ const handlers = {
   },
 
   onApplyChoice: (entryId, choiceTag) => {
-    // 로그 엔트리에 붙어있는 버튼 처리
     const entry = state.log.entries.find(e => e.id === entryId);
     if (!entry || entry.choiceMade) return;
     entry.choiceMade = choiceTag;
@@ -114,7 +118,6 @@ const handlers = {
 };
 
 function ensureRelations() {
-  // 단방향: A->B, B->A 각각 보장
   for (const a of state.characters) {
     for (const b of state.characters) {
       if (a.id === b.id) continue;
@@ -138,7 +141,6 @@ function rerender() {
 
   els.chkGemini.checked = !!state.settings.useGemini;
 
-  // setup hint
   if (state.setupUnlocked) {
     els.setupHint.textContent = "초기 설정 단계: 캐릭터/관계를 정한 뒤 ‘이번 달 진행’을 누르면 잠깁니다.";
   } else {
@@ -146,8 +148,6 @@ function rerender() {
   }
 
   renderAll(state, els, handlers);
-
-  // 로그 렌더
   appendLogs(els.logBox, state, handlers);
 }
 
@@ -170,6 +170,12 @@ els.btnLoad.addEventListener("click", () => {
   if (!loaded) { alert("저장 데이터가 없습니다."); return; }
   state = loaded;
   state.settings.workerUrl = WORKER_URL;
+
+  // ✅ 기존 저장 데이터에 별자리가 비어있거나 고정값이면 생일 기준으로 재계산
+  for (const c of state.characters) {
+    c.zodiac = getZodiacFromBirthday(c.birthday?.m ?? 1, c.birthday?.d ?? 1);
+  }
+
   rerender();
 });
 
@@ -195,37 +201,29 @@ els.chkGemini.addEventListener("change", () => {
 });
 
 els.btnRun.addEventListener("click", async () => {
-  // 스케줄 수집
   const schedules = {};
   for (const c of state.characters) {
     const sel = els.scheduleBox.querySelector(`select[data-sel="${c.id}"]`);
     schedules[c.id] = sel?.value ?? "rest";
   }
 
-  // 첫 진행 시 setup 잠금
-  if (state.setupUnlocked) {
-    state.setupUnlocked = false;
-  }
+  if (state.setupUnlocked) state.setupUnlocked = false;
 
-  // 엔진 진행(템플릿 이벤트 + 관계 이벤트 + 생일 + 별자리 + 12월 대회)
   const result = runOneMonth(state, schedules);
 
-  // AI 이벤트를 “추가로” 많이 붙임(월당 N개)
-  if (state.settings.useGemini && state.settings.workerUrl && !state.settings.workerUrl.includes("YOUR_WORKER")) {
-    const extraN = 3 + Math.min(3, state.characters.length); // 빈도 증가
+  // ✅ AI 이벤트 추가 (URL 고정이므로 그대로 사용)
+  if (state.settings.useGemini) {
+    const extraN = 3 + Math.min(3, state.characters.length);
     const aiEntries = await fetchAiEventsBatch(state, schedules, extraN).catch(() => []);
     result.newLogEntries.push(...aiEntries);
   }
 
-  // 로그 누적
   state.log.entries.push(...result.newLogEntries);
   state.monthIndex = result.nextMonthIndex;
   state.money = result.nextMoney;
 
   saveToLocal(state);
   rerender();
-
-  // 로그 맨 아래로
   els.logBox.scrollTop = els.logBox.scrollHeight;
 });
 
@@ -264,7 +262,6 @@ async function fetchAiEvent(state, schedules) {
 
   const card = await res.json();
 
-  // log entry 형태로 맞춤
   return {
     id: card.id || `ai_${Date.now()}_${Math.random().toString(16).slice(2)}`,
     type: "이벤트",
