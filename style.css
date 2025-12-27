@@ -1,0 +1,35 @@
+:root { --bg:#0b0c10; --fg:#e7e7e7; --mut:#a8a8a8; --card:#151823; --line:#2a2f45; }
+* { box-sizing:border-box; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+body { margin:0; background:var(--bg); color:var(--fg); }
+.wrap { max-width:1200px; margin:0 auto; padding:16px; }
+.top { padding:12px; background:var(--card); border:1px solid var(--line); border-radius:10px; }
+h1 { margin:0 0 8px 0; font-size:18px; }
+h2 { margin:0 0 10px 0; font-size:16px; }
+h3 { margin:14px 0 8px 0; font-size:14px; color:var(--mut); }
+.grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:12px; }
+.panel { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px; }
+.row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.row.small { font-size:12px; color:var(--mut); }
+.list { display:flex; flex-direction:column; gap:10px; }
+button { background:#222842; border:1px solid var(--line); color:var(--fg); padding:8px 10px; border-radius:8px; cursor:pointer; }
+button:hover { filter:brightness(1.1); }
+input, select { background:#0f1220; border:1px solid var(--line); color:var(--fg); padding:8px; border-radius:8px; }
+.card { padding:10px; border:1px solid var(--line); border-radius:10px; background:#101328; }
+.muted { color:var(--mut); }
+.kv { display:grid; grid-template-columns: 120px 1fr; gap:6px; font-size:13px; }
+.toggle { font-size:12px; color:var(--mut); display:flex; gap:6px; align-items:center; }
+.badge { display:inline-block; padding:2px 6px; border:1px solid var(--line); border-radius:999px; font-size:12px; color:var(--mut); }
+
+/* Modal */
+.modalBack { position:fixed; inset:0; background:rgba(0,0,0,0.65); display:flex; justify-content:center; align-items:center; padding:14px; }
+.modal { width:min(860px, 100%); background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; }
+.modalTop { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+.modalTitle { font-size:16px; margin:0; }
+.modalBody { margin-top:10px; border-top:1px solid var(--line); padding-top:10px; }
+.scriptN { color:var(--mut); font-size:12px; }
+.narr { margin:8px 0 10px 0; line-height:1.5; }
+.dialog { margin:6px 0; padding-left:10px; border-left:2px solid #2e3560; }
+.dialog b { color:#cbd2ff; }
+.choiceRow { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.choiceRow button { flex:1; min-width:180px; }
+.footerRow { display:flex; justify-content:space-between; align-items:center; margin-top:12px; border-top:1px solid var(--line); padding-top:10px; }
