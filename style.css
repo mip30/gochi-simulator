@@ -27,8 +27,8 @@ input, select { background:#0f1220; border:1px solid var(--line); color:var(--fg
 .modalTitle { font-size:16px; margin:0; }
 .modalBody { margin-top:10px; border-top:1px solid var(--line); padding-top:10px; }
 .scriptN { color:var(--mut); font-size:12px; }
-.narr { margin:8px 0 10px 0; line-height:1.5; }
-.dialog { margin:6px 0; padding-left:10px; border-left:2px solid #2e3560; }
+.narr { margin:8px 0 10px 0; line-height:1.6; white-space:pre-line; }
+.dialog { margin:6px 0; padding-left:10px; border-left:2px solid #2e3560; white-space:pre-line; }
 .dialog b { color:#cbd2ff; }
 .choiceRow { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
 .choiceRow button { flex:1; min-width:180px; }
