@@ -1,7 +1,15 @@
-import { newGameState, newCharacter, MAX_CHARS, newRelation, relationKey } from "./sim/state.js";
+// main.js
+import { newGameState, newCharacter, MAX_CHARS, newRelation, relationKey, getZodiac } from "./sim/state.js";
 import { runOneMonth } from "./sim/engine.js";
 import { renderAll } from "./ui/render.js";
 import { showScriptModal } from "./ui/modal.js";
+
+/**
+ * 1) Worker URL 내장
+ * 아래 값을 본인 Worker URL로 바꿔서 커밋하면 됩니다.
+ * 예: https://raising-sim-gemini.abcde.workers.dev
+ */
+const WORKER_URL = "https://gochi-simulator.madeinpain30.workers.dev";
 
 const els = {
   btnNew: document.getElementById("btnNew"),
@@ -11,7 +19,6 @@ const els = {
   btnAddChar: document.getElementById("btnAddChar"),
   btnRun: document.getElementById("btnRun"),
   chkGemini: document.getElementById("chkGemini"),
-  inpWorkerUrl: document.getElementById("inpWorkerUrl"),
   charList: document.getElementById("charList"),
   relBox: document.getElementById("relBox"),
   scheduleBox: document.getElementById("scheduleBox"),
@@ -22,6 +29,7 @@ const els = {
 };
 
 let state = loadFromLocal() ?? newGameState();
+state.settings.workerUrl = WORKER_URL; // 내장 적용
 
 function ensureRelationsExist() {
   if (state.characters.length < 2) return;
@@ -37,7 +45,6 @@ function ensureRelationsExist() {
 function rerender() {
   ensureRelationsExist();
   els.chkGemini.checked = !!state.settings.useGemini;
-  els.inpWorkerUrl.value = state.settings.workerUrl ?? "";
   renderAll(state, els, handlers);
 }
 
@@ -46,21 +53,16 @@ const handlers = {
     const c = state.characters.find(x => x.id === id);
     if (!c) return;
 
-    const name = prompt("Name", c.name) ?? c.name;
-    const mbti = (prompt("MBTI (e.g., INFP)", c.mbti) ?? c.mbti).toUpperCase();
-    const m = Number(prompt("Birth month (1-12)", String(c.birthday.m)) ?? c.birthday.m);
-    const d = Number(prompt("Birth day (1-31)", String(c.birthday.d)) ?? c.birthday.d);
+    const name = prompt("이름", c.name) ?? c.name;
+    const mbti = (prompt("MBTI (예: INFP)", c.mbti) ?? c.mbti).toUpperCase();
+    const m = Number(prompt("생일 월 (1-12)", String(c.birthday.m)) ?? c.birthday.m);
+    const d = Number(prompt("생일 일 (1-31)", String(c.birthday.d)) ?? c.birthday.d);
 
     c.name = name.trim() || c.name;
     c.mbti = mbti.trim() || c.mbti;
-    c.birthday.m = isFinite(m) ? m : c.birthday.m;
-    c.birthday.d = isFinite(d) ? d : c.birthday.d;
-    // recompute zodiac
-    // (import avoided: quick recompute via simple mapping)
-    // easiest: recreate zodiac by calling small helper in state module would be better, but keep minimal:
-    // reload page to recalc? no. We'll do inline:
-    const zodiac = (await import("./sim/state.js")).getZodiac(c.birthday.m, c.birthday.d);
-    c.zodiac = zodiac;
+    c.birthday.m = Number.isFinite(m) ? m : c.birthday.m;
+    c.birthday.d = Number.isFinite(d) ? d : c.birthday.d;
+    c.zodiac = getZodiac(c.birthday.m, c.birthday.d);
 
     rerender();
   },
@@ -85,20 +87,22 @@ const handlers = {
 };
 
 els.btnNew.addEventListener("click", () => {
-  if (!confirm("Start a new game? (Current state will be replaced)")) return;
+  if (!confirm("새 게임을 시작할까요? (현재 진행은 사라집니다)")) return;
   state = newGameState();
+  state.settings.workerUrl = WORKER_URL;
   rerender();
 });
 
 els.btnSave.addEventListener("click", () => {
   saveToLocal(state);
-  alert("Saved.");
+  alert("저장했습니다.");
 });
 
 els.btnLoad.addEventListener("click", () => {
   const loaded = loadFromLocal();
-  if (!loaded) { alert("No save found."); return; }
+  if (!loaded) { alert("저장 데이터가 없습니다."); return; }
   state = loaded;
+  state.settings.workerUrl = WORKER_URL;
   rerender();
 });
 
@@ -113,23 +117,23 @@ els.btnExport.addEventListener("click", () => {
 els.btnAddChar.addEventListener("click", () => {
   if (state.characters.length >= MAX_CHARS) return;
 
-  const name = prompt("Name", `Char${state.characters.length+1}`) ?? "";
-  const mbti = (prompt("MBTI (e.g., INFP)", "INFP") ?? "INFP").toUpperCase();
-  const m = Number(prompt("Birth month (1-12)", "1") ?? "1");
-  const d = Number(prompt("Birth day (1-31)", "1") ?? "1");
+  const name = prompt("이름", `캐릭터${state.characters.length+1}`) ?? "";
+  const mbti = (prompt("MBTI (예: INFP)", "INFP") ?? "INFP").toUpperCase();
+  const m = Number(prompt("생일 월 (1-12)", "1") ?? "1");
+  const d = Number(prompt("생일 일 (1-31)", "1") ?? "1");
 
-  state.characters.push(newCharacter({ name: name.trim() || `Char${state.characters.length+1}`, mbti, birthM: m, birthD: d }));
+  state.characters.push(newCharacter({
+    name: name.trim() || `캐릭터${state.characters.length+1}`,
+    mbti,
+    birthM: m,
+    birthD: d
+  }));
   ensureRelationsExist();
   rerender();
 });
 
 els.chkGemini.addEventListener("change", () => {
   state.settings.useGemini = els.chkGemini.checked;
-  rerender();
-});
-
-els.inpWorkerUrl.addEventListener("change", () => {
-  state.settings.workerUrl = els.inpWorkerUrl.value.trim();
   rerender();
 });
 
@@ -153,7 +157,7 @@ els.btnRun.addEventListener("click", async () => {
     onNeedHighlight: async () => {
       if (!state.settings.useGemini) return null;
       const url = (state.settings.workerUrl ?? "").trim();
-      if (!url) return null;
+      if (!url || url.includes("YOUR_WORKER")) return null;
       try {
         return await fetchHighlightCard(url, state, schedulesByCharId);
       } catch {
@@ -168,7 +172,6 @@ rerender();
 
 // ------------------- Gemini highlight fetch -------------------
 async function fetchHighlightCard(workerUrl, state, schedulesByCharId) {
-  // state summary only (keep token use low)
   const payload = {
     monthIndex: state.monthIndex,
     money: state.money,
@@ -177,7 +180,9 @@ async function fetchHighlightCard(workerUrl, state, schedulesByCharId) {
       stats: c.stats,
       schedule: schedulesByCharId[c.id] ?? "rest",
     })),
-    relations: Object.entries(state.relations).map(([k,v]) => ({ key:k, stage:v.stage, affinity:v.affinity, trust:v.trust, tension:v.tension, romance:v.romance, meta:v.meta })),
+    relations: Object.entries(state.relations).map(([k,v]) => ({
+      key:k, stage:v.stage, affinity:v.affinity, trust:v.trust, tension:v.tension, romance:v.romance, meta:v.meta
+    })),
   };
 
   const res = await fetch(workerUrl, {
@@ -187,13 +192,11 @@ async function fetchHighlightCard(workerUrl, state, schedulesByCharId) {
   });
 
   if (!res.ok) throw new Error("Worker error");
-  const card = await res.json();
-  // expected to already match card format
-  return card;
+  return await res.json();
 }
 
 // ------------------- local save -------------------
-const LS_KEY = "raising_sim_save_v1";
+const LS_KEY = "raising_sim_save_v2_kr";
 function saveToLocal(s) { localStorage.setItem(LS_KEY, JSON.stringify(s)); }
 function loadFromLocal() {
   const raw = localStorage.getItem(LS_KEY);
