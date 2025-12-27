@@ -1,4 +1,4 @@
-import { MAX_CHARS, MBTI_LIST, SCHEDULE_IDS, monthToYearMonth, zodiacOptions } from "../sim/state.js";
+import { MAX_CHARS, MBTI_LIST, SCHEDULE_IDS, monthToYearMonth } from "../sim/state.js";
 import { SCHEDULES } from "../sim/rules.js";
 
 export function renderAll(state, els, handlers) {
@@ -41,8 +41,6 @@ function renderChars(state, els, handlers) {
   const canAdd = state.setupUnlocked && state.characters.length < MAX_CHARS;
   els.btnAddChar.disabled = !canAdd;
 
-  const zOpts = zodiacOptions();
-
   els.charList.innerHTML = state.characters.map(c => {
     const locked = !state.setupUnlocked;
 
@@ -54,9 +52,7 @@ function renderChars(state, els, handlers) {
             <select data-mbti="${c.id}" ${locked ? "disabled":""}>
               ${MBTI_LIST.map(m => `<option value="${m}" ${m===c.mbti ? "selected":""}>${m}</option>`).join("")}
             </select>
-            <select data-zodiac="${c.id}" ${locked ? "disabled":""}>
-              ${zOpts.map(z => `<option value="${z}" ${z===c.zodiac ? "selected":""}>${z}</option>`).join("")}
-            </select>
+            <span class="badge">${escapeHtml(c.zodiac)}</span>
           </div>
 
           <div class="row">
@@ -88,16 +84,12 @@ function renderChars(state, els, handlers) {
     `;
   }).join("");
 
-  // setup 변경 핸들러
   if (state.setupUnlocked) {
     els.charList.querySelectorAll("input[data-name]").forEach(inp => {
       inp.addEventListener("change", () => handlers.onUpdateCharSetup(inp.getAttribute("data-name"), { name: inp.value }));
     });
     els.charList.querySelectorAll("select[data-mbti]").forEach(sel => {
       sel.addEventListener("change", () => handlers.onUpdateCharSetup(sel.getAttribute("data-mbti"), { mbti: sel.value }));
-    });
-    els.charList.querySelectorAll("select[data-zodiac]").forEach(sel => {
-      sel.addEventListener("change", () => handlers.onUpdateCharSetup(sel.getAttribute("data-zodiac"), { zodiac: sel.value }));
     });
     els.charList.querySelectorAll("select[data-bm]").forEach(sel => {
       sel.addEventListener("change", () => handlers.onUpdateCharSetup(sel.getAttribute("data-bm"), { birthM: Number(sel.value) }));
@@ -119,7 +111,7 @@ function renderSchedules(state, els) {
   els.scheduleBox.innerHTML = state.characters.map(c => `
     <div class="card">
       <div class="row" style="justify-content:space-between;">
-        <div><b>${escapeHtml(c.name)}</b> <span class="badge">${c.mbti}</span> <span class="badge">${c.zodiac}</span></div>
+        <div><b>${escapeHtml(c.name)}</b> <span class="badge">${c.mbti}</span> <span class="badge">${escapeHtml(c.zodiac)}</span></div>
         <div class="row">
           <select data-sel="${c.id}">
             ${SCHEDULE_IDS.map(id => `<option value="${id}">${SCHEDULES[id].label}</option>`).join("")}
