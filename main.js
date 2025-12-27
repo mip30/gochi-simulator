@@ -7,7 +7,7 @@ import { renderAll } from "./ui/render.js";
 import { showRelationsModal } from "./ui/relations_modal.js";
 import { appendLogs, clearLogs } from "./ui/log.js";
 
-const WORKER_URL = "https://YOUR_WORKER.your-subdomain.workers.dev"; // 내장
+const WORKER_URL = "https://gochi-simulator.madeinpain30.workers.dev/"; // 내장
 
 const LS_KEY = "raising_sim_save_v3";
 const saveToLocal = (s) => localStorage.setItem(LS_KEY, JSON.stringify(s));
