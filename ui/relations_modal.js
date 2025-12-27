@@ -1,6 +1,6 @@
 const PRESETS = ["초면", "라이벌", "가족", "짝사랑"];
 
-export function showRelationsModal({ rootEl, state, fromId, setupUnlocked, onChangePreset }) {
+export function showRelationsModal({ rootEl, state, fromId, setupUnlocked, onChangePresetByKey }) {
   const from = state.characters.find(c => c.id === fromId);
   if (!from) return;
 
@@ -57,8 +57,7 @@ export function showRelationsModal({ rootEl, state, fromId, setupUnlocked, onCha
     modal.querySelectorAll("select[data-key]").forEach(sel => {
       sel.addEventListener("change", () => {
         const key = sel.getAttribute("data-key");
-        const val = sel.value;
-        onChangePreset(key.split("->")[1], val);
+        onChangePresetByKey(key, sel.value);
       });
     });
   }
@@ -66,6 +65,6 @@ export function showRelationsModal({ rootEl, state, fromId, setupUnlocked, onCha
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    "&":"&amp;","<":"&lt;",">":"&amp;gt;",'"':"&quot;","'":"&#039;"
   }[c]));
 }
