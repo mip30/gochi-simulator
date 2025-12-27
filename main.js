@@ -40,6 +40,23 @@ window.addEventListener("unhandledrejection", (e) => {
  */
 const WORKER_URL = "https://gochi-simulator.madeinpain30.workers.dev";
 
+/**
+ * 로컬 저장 키/함수는 "첫 실행 이전"에 있어야 함 (TDZ 방지)
+ */
+const LS_KEY = "raising_sim_save_v2_kr";
+function saveToLocal(s) {
+  localStorage.setItem(LS_KEY, JSON.stringify(s));
+}
+function loadFromLocal() {
+  const raw = localStorage.getItem(LS_KEY);
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+// (선택) 부트 인디케이터 업데이트
+const boot = document.getElementById("boot-indicator");
+if (boot) boot.textContent = "main.js 실행됨 (이제 버튼 클릭 가능해야 함)";
+
 const els = {
   btnNew: document.getElementById("btnNew"),
   btnSave: document.getElementById("btnSave"),
@@ -58,14 +75,14 @@ const els = {
 };
 
 let state = loadFromLocal() ?? newGameState();
-state.settings.workerUrl = WORKER_URL; // 내장 적용
+state.settings.workerUrl = WORKER_URL;
 
 function ensureRelationsExist() {
   if (state.characters.length < 2) return;
-  for (let i=0;i<state.characters.length;i++) {
-    for (let j=i+1;j<state.characters.length;j++) {
+  for (let i = 0; i < state.characters.length; i++) {
+    for (let j = i + 1; j < state.characters.length; j++) {
       const a = state.characters[i], b = state.characters[j];
-      const key = relationKey(a.id,b.id);
+      const key = relationKey(a.id, b.id);
       if (!state.relations[key]) state.relations[key] = newRelation("strangers", {});
     }
   }
@@ -95,18 +112,19 @@ const handlers = {
 
     rerender();
   },
+
   onRemoveChar: (id) => {
     if (state.characters.length === 1) return;
     state.characters = state.characters.filter(c => c.id !== id);
 
-    // remove relations with that id
     const newRel = {};
-    for (const [k,v] of Object.entries(state.relations)) {
+    for (const [k, v] of Object.entries(state.relations)) {
       if (!k.split("|").includes(id)) newRel[k] = v;
     }
     state.relations = newRel;
     rerender();
   },
+
   onApplyPreset: (key, presetId, crushFromId) => {
     const meta = {};
     if (presetId === "crush") meta.crushFrom = crushFromId;
@@ -146,16 +164,16 @@ els.btnExport.addEventListener("click", () => {
 els.btnAddChar.addEventListener("click", () => {
   if (state.characters.length >= MAX_CHARS) return;
 
-  const name = prompt("이름", `캐릭터${state.characters.length+1}`) ?? "";
+  const name = prompt("이름", `캐릭터${state.characters.length + 1}`) ?? "";
   const mbti = (prompt("MBTI (예: INFP)", "INFP") ?? "INFP").toUpperCase();
   const m = Number(prompt("생일 월 (1-12)", "1") ?? "1");
   const d = Number(prompt("생일 일 (1-31)", "1") ?? "1");
 
   state.characters.push(newCharacter({
-    name: name.trim() || `캐릭터${state.characters.length+1}`,
+    name: name.trim() || `캐릭터${state.characters.length + 1}`,
     mbti,
     birthM: m,
-    birthD: d
+    birthD: d,
   }));
   ensureRelationsExist();
   rerender();
@@ -167,7 +185,6 @@ els.chkGemini.addEventListener("change", () => {
 });
 
 els.btnRun.addEventListener("click", async () => {
-  // collect schedules
   const schedulesByCharId = {};
   state.characters.forEach(c => {
     const sel = els.scheduleBox.querySelector(`select[data-sel="${c.id}"]`);
@@ -177,11 +194,9 @@ els.btnRun.addEventListener("click", async () => {
   const result = runOneMonth(state, schedulesByCharId);
   state = result.state;
 
-  const cards = result.cards;
-
   showScriptModal({
     rootEl: els.modalRoot,
-    cards,
+    cards: result.cards,
     state,
     onNeedHighlight: async () => {
       if (!state.settings.useGemini) return null;
@@ -209,26 +224,17 @@ async function fetchHighlightCard(workerUrl, state, schedulesByCharId) {
       stats: c.stats,
       schedule: schedulesByCharId[c.id] ?? "rest",
     })),
-    relations: Object.entries(state.relations).map(([k,v]) => ({
-      key:k, stage:v.stage, affinity:v.affinity, trust:v.trust, tension:v.tension, romance:v.romance, meta:v.meta
+    relations: Object.entries(state.relations).map(([k, v]) => ({
+      key: k, stage: v.stage, affinity: v.affinity, trust: v.trust, tension: v.tension, romance: v.romance, meta: v.meta
     })),
   };
 
   const res = await fetch(workerUrl, {
     method: "POST",
-    headers: { "Content-Type":"application/json" },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 
   if (!res.ok) throw new Error("Worker error");
   return await res.json();
-}
-
-// ------------------- local save -------------------
-const LS_KEY = "raising_sim_save_v2_kr";
-function saveToLocal(s) { localStorage.setItem(LS_KEY, JSON.stringify(s)); }
-function loadFromLocal() {
-  const raw = localStorage.getItem(LS_KEY);
-  if (!raw) return null;
-  try { return JSON.parse(raw); } catch { return null; }
 }
