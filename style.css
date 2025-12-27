@@ -1,24 +1,47 @@
 :root { --bg:#0b0c10; --fg:#e7e7e7; --mut:#a8a8a8; --card:#151823; --line:#2a2f45; }
 * { box-sizing:border-box; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
 body { margin:0; background:var(--bg); color:var(--fg); }
-.wrap { max-width:1200px; margin:0 auto; padding:16px; }
+.wrap { max-width:1300px; margin:0 auto; padding:16px; }
 .top { padding:12px; background:var(--card); border:1px solid var(--line); border-radius:10px; }
 h1 { margin:0 0 8px 0; font-size:18px; }
 h2 { margin:0 0 10px 0; font-size:16px; }
 h3 { margin:14px 0 8px 0; font-size:14px; color:var(--mut); }
-.grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:12px; }
+.grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:12px; align-items:start; }
 .panel { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px; }
 .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
 .row.small { font-size:12px; color:var(--mut); }
 .list { display:flex; flex-direction:column; gap:10px; }
 button { background:#222842; border:1px solid var(--line); color:var(--fg); padding:8px 10px; border-radius:8px; cursor:pointer; }
 button:hover { filter:brightness(1.1); }
+button:disabled { opacity:0.45; cursor:not-allowed; }
 input, select { background:#0f1220; border:1px solid var(--line); color:var(--fg); padding:8px; border-radius:8px; }
 .card { padding:10px; border:1px solid var(--line); border-radius:10px; background:#101328; }
 .muted { color:var(--mut); }
-.kv { display:grid; grid-template-columns: 120px 1fr; gap:6px; font-size:13px; }
 .toggle { font-size:12px; color:var(--mut); display:flex; gap:6px; align-items:center; }
 .badge { display:inline-block; padding:2px 6px; border:1px solid var(--line); border-radius:999px; font-size:12px; color:var(--mut); }
+
+.kv { display:grid; grid-template-columns: 120px 1fr; gap:6px; font-size:13px; }
+
+.statsGrid { display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:10px; }
+.statLine { display:flex; flex-direction:column; gap:4px; }
+.statTop { display:flex; justify-content:space-between; font-size:12px; color:var(--mut); }
+.bar { height:10px; border:1px solid var(--line); border-radius:999px; overflow:hidden; background:#0f1220; }
+.bar > div { height:100%; width:0%; background:#cbd2ff; }
+.bar.stress { border-color:#5a2a2a; }
+.bar.stress > div { background:#ffb3b3; }
+.stressBadge { font-size:12px; padding:2px 6px; border-radius:999px; border:1px solid #5a2a2a; color:#ffb3b3; }
+
+.logBox { height:520px; overflow:auto; border:1px solid var(--line); border-radius:10px; padding:10px; background:#0f1220; display:flex; flex-direction:column; gap:10px; }
+.logMonth { color:#cbd2ff; font-size:12px; border-bottom:1px solid var(--line); padding-bottom:6px; margin-top:2px; }
+.logEntry { background:#101328; border:1px solid var(--line); border-radius:10px; padding:10px; }
+.logEntry .title { font-weight:700; margin-bottom:6px; }
+.logEntry .meta { color:var(--mut); font-size:12px; margin-bottom:6px; }
+.logEntry .text { white-space:pre-line; line-height:1.5; }
+.logEntry .dlg { margin-top:6px; padding-left:10px; border-left:2px solid #2e3560; white-space:pre-line; }
+.logEntry .dlg b { color:#cbd2ff; }
+.logEntry .sep { border-top:1px dashed #2a2f45; margin:10px 0; }
+.choiceRow { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.choiceRow button { flex:1; min-width:160px; }
 
 /* Modal */
 .modalBack { position:fixed; inset:0; background:rgba(0,0,0,0.65); display:flex; justify-content:center; align-items:center; padding:14px; }
@@ -26,10 +49,3 @@ input, select { background:#0f1220; border:1px solid var(--line); color:var(--fg
 .modalTop { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
 .modalTitle { font-size:16px; margin:0; }
 .modalBody { margin-top:10px; border-top:1px solid var(--line); padding-top:10px; }
-.scriptN { color:var(--mut); font-size:12px; }
-.narr { margin:8px 0 10px 0; line-height:1.6; white-space:pre-line; }
-.dialog { margin:6px 0; padding-left:10px; border-left:2px solid #2e3560; white-space:pre-line; }
-.dialog b { color:#cbd2ff; }
-.choiceRow { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
-.choiceRow button { flex:1; min-width:180px; }
-.footerRow { display:flex; justify-content:space-between; align-items:center; margin-top:12px; border-top:1px solid var(--line); padding-top:10px; }
