@@ -1,5 +1,8 @@
 export const MAX_CHARS = 4;
 
+export const START_AGE = 10;
+export const END_AGE = 20;
+
 export const MBTI_LIST = [
   "INTJ","INTP","ENTJ","ENTP",
   "INFJ","INFP","ENFJ","ENFP",
@@ -21,16 +24,23 @@ export function monthToYearMonth(monthIndex) {
   return { year, month };
 }
 
-/**
- * ✅ 생일(월/일) 기반 별자리 자동 계산
- * 기준: 일반적인 서양 별자리 경계(대중적 기준)
- */
+// ✅ 2개월 기간 라벨 (예: 1년 3~4월, 연도 넘어가면 1년 12월~2년 1월)
+export function periodFromMonthIndex(monthIndex, span = 2) {
+  const start = monthToYearMonth(monthIndex);
+  const endIndex = monthIndex + (span - 1);
+  const end = monthToYearMonth(endIndex);
+  return { start, end, span };
+}
+
+export function ageFromMonthIndex(monthIndex) {
+  const age = START_AGE + Math.floor(monthIndex / 12);
+  return clamp(age, START_AGE, END_AGE);
+}
+
 export function getZodiacFromBirthday(m, d) {
   const mm = clamp(Number(m) || 1, 1, 12);
   const dd = clamp(Number(d) || 1, 1, 31);
 
-  // 경계일: 해당 날짜 "이후" 다음 별자리로 넘어감
-  // (예: 물병 1/20 시작)
   if ((mm === 1 && dd >= 20) || (mm === 2 && dd <= 18)) return "물병자리";
   if ((mm === 2 && dd >= 19) || (mm === 3 && dd <= 20)) return "물고기자리";
   if ((mm === 3 && dd >= 21) || (mm === 4 && dd <= 19)) return "양자리";
@@ -42,7 +52,7 @@ export function getZodiacFromBirthday(m, d) {
   if ((mm === 9 && dd >= 23) || (mm === 10 && dd <= 22)) return "천칭자리";
   if ((mm === 10 && dd >= 23) || (mm === 11 && dd <= 22)) return "전갈자리";
   if ((mm === 11 && dd >= 23) || (mm === 12 && dd <= 21)) return "사수자리";
-  return "염소자리"; // 12/22~1/19
+  return "염소자리";
 }
 
 export function newCharacter({ name="주인공", birthM=1, birthD=1, mbti="INTJ" } = {}) {
@@ -55,7 +65,7 @@ export function newCharacter({ name="주인공", birthM=1, birthD=1, mbti="INTJ"
     name,
     birthday: { m: bm, d: bd },
     mbti: mbti.toUpperCase(),
-    zodiac: getZodiacFromBirthday(bm, bd), // ✅ 자동
+    zodiac: getZodiacFromBirthday(bm, bd),
     stats: {
       intellect: 10,
       charm: 10,
@@ -80,20 +90,19 @@ export function newCharacter({ name="주인공", birthM=1, birthD=1, mbti="INTJ"
 export function newGameState() {
   const c1 = newCharacter({ name: "주인공", mbti: "INTJ", birthM: 1, birthD: 1 });
   return {
-    version: 3,
+    version: 5,
     setupUnlocked: true,
-    monthIndex: 0,
+    monthIndex: 0, // 실제 달 인덱스(0..119). 진행은 +2씩.
     money: 100,
-
     characters: [c1],
-
     relations: {},
-
     settings: {
       useGemini: false,
       workerUrl: "",
     },
-
+    ui: {
+      chatPair: null, // {aId,bId}
+    },
     log: {
       entries: [],
     },
