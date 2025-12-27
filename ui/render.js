@@ -1,125 +1,117 @@
-// ui/render.js
-import { MAX_CHARS, REL_PRESETS, relationKey, SCHEDULE_IDS } from "../sim/state.js";
+import { MAX_CHARS, MBTI_LIST, SCHEDULE_IDS, monthToYearMonth, zodiacOptions } from "../sim/state.js";
 import { SCHEDULES } from "../sim/rules.js";
 
 export function renderAll(state, els, handlers) {
   renderTime(state, els);
   renderChars(state, els, handlers);
-  renderRelations(state, els, handlers);
   renderSchedules(state, els);
-  renderStats(state, els);
 }
 
 function renderTime(state, els) {
-  const year = Math.floor(state.monthIndex / 12) + 1;
-  const month = (state.monthIndex % 12) + 1;
+  const { year, month } = monthToYearMonth(state.monthIndex);
   els.timeBox.innerHTML = `<div class="kv">
     <div class="muted">연도</div><div>${year} / 10</div>
     <div class="muted">월</div><div>${month} / 12</div>
-    <div class="muted">턴</div><div>${state.monthIndex+1} / 120</div>
+    <div class="muted">턴</div><div>${state.monthIndex + 1} / 120</div>
   </div>`;
   els.moneyBox.innerHTML = `<div class="kv">
     <div class="muted">소지금</div><div>${state.money}</div>
+    <div class="muted">상태</div><div>${state.setupUnlocked ? "설정 가능" : "진행 중(잠김)"}</div>
   </div>`;
 }
 
-function renderChars(state, els, handlers) {
-  const canAdd = state.characters.length < MAX_CHARS;
-  els.btnAddChar.disabled = !canAdd;
-
-  els.charList.innerHTML = state.characters.map(c => `
-    <div class="card">
-      <div class="row" style="justify-content:space-between;">
-        <div>
-          <b>${c.name}</b>
-          <span class="badge">${c.mbti}</span>
-          <span class="badge">${c.zodiac}</span>
-        </div>
-        <div class="row">
-          <button data-edit="${c.id}">수정</button>
-          <button data-del="${c.id}" ${state.characters.length===1 ? "disabled":""}>삭제</button>
-        </div>
+function statBar(label, val, isStress=false) {
+  const v = Math.max(0, Math.min(100, Number(val) || 0));
+  const barCls = isStress ? "bar stress" : "bar";
+  const badge = isStress ? `<span class="stressBadge">스트레스 ${v}/100</span>` : `<span class="badge">${v}/100</span>`;
+  return `
+    <div class="statLine">
+      <div class="statTop">
+        <span>${label}</span>
+        ${badge}
       </div>
-      <div class="kv">
-        <div class="muted">생일</div><div>${c.birthday.m}/${c.birthday.d}</div>
+      <div class="${barCls}">
+        <div style="width:${v}%;"></div>
       </div>
     </div>
-  `).join("");
-
-  els.charList.querySelectorAll("button[data-edit]").forEach(b => {
-    b.addEventListener("click", () => handlers.onEditChar(b.getAttribute("data-edit")));
-  });
-  els.charList.querySelectorAll("button[data-del]").forEach(b => {
-    b.addEventListener("click", () => handlers.onRemoveChar(b.getAttribute("data-del")));
-  });
+  `;
 }
 
-function renderRelations(state, els, handlers) {
-  if (state.characters.length < 2) {
-    els.relBox.innerHTML = `<div class="muted">캐릭터를 한 명 더 추가하면 관계 설정이 활성화됩니다.</div>`;
-    return;
-  }
+function renderChars(state, els, handlers) {
+  const canAdd = state.setupUnlocked && state.characters.length < MAX_CHARS;
+  els.btnAddChar.disabled = !canAdd;
 
-  const chars = state.characters;
-  const rows = [];
-  for (let i=0;i<chars.length;i++) {
-    for (let j=i+1;j<chars.length;j++) {
-      const a = chars[i], b = chars[j];
-      const key = relationKey(a.id,b.id);
-      const rel = state.relations[key] ?? { affinity:0, trust:10, tension:10, romance:0, stage:"strangers", meta:{} };
-      rows.push({ a,b,key,rel });
-    }
-  }
+  const zOpts = zodiacOptions();
 
-  const stageLabel = (s) => ({
-    strangers:"초면", friends:"친구", close:"친밀",
-    rivals:"라이벌", family:"가족", crush:"짝사랑",
-    dating:"연인", partners:"파트너", broken:"파국"
-  }[s] ?? s);
+  els.charList.innerHTML = state.characters.map(c => {
+    const locked = !state.setupUnlocked;
 
-  els.relBox.innerHTML = rows.map(r => `
-    <div class="card">
-      <div class="row" style="justify-content:space-between;">
-        <div><b>${r.a.name}</b> ↔ <b>${r.b.name}</b> <span class="badge">${stageLabel(r.rel.stage)}</span></div>
-        <div class="row">
-          <select data-preset="${r.key}">
-            ${REL_PRESETS.map(p => `<option value="${p.id}">${p.label}</option>`).join("")}
+    return `
+      <div class="card">
+        <div class="row" style="justify-content:space-between;">
+          <div class="row">
+            <input data-name="${c.id}" value="${escapeHtml(c.name)}" ${locked ? "disabled":""} style="width:140px;" />
+            <select data-mbti="${c.id}" ${locked ? "disabled":""}>
+              ${MBTI_LIST.map(m => `<option value="${m}" ${m===c.mbti ? "selected":""}>${m}</option>`).join("")}
+            </select>
+            <select data-zodiac="${c.id}" ${locked ? "disabled":""}>
+              ${zOpts.map(z => `<option value="${z}" ${z===c.zodiac ? "selected":""}>${z}</option>`).join("")}
+            </select>
+          </div>
+
+          <div class="row">
+            <button data-rel="${c.id}">관계</button>
+            <button data-del="${c.id}" ${locked || state.characters.length===1 ? "disabled":""}>삭제</button>
+          </div>
+        </div>
+
+        <div class="row small">
+          <span class="muted">생일</span>
+          <select data-bm="${c.id}" ${locked ? "disabled":""}>
+            ${Array.from({length:12},(_,i)=>i+1).map(m => `<option value="${m}" ${m===c.birthday.m ? "selected":""}>${m}월</option>`).join("")}
           </select>
-          <select data-crushfrom="${r.key}" style="display:none;">
-            <option value="${r.a.id}">짝사랑 주체: ${r.a.name}</option>
-            <option value="${r.b.id}">짝사랑 주체: ${r.b.name}</option>
+          <select data-bd="${c.id}" ${locked ? "disabled":""}>
+            ${Array.from({length:31},(_,i)=>i+1).map(d => `<option value="${d}" ${d===c.birthday.d ? "selected":""}>${d}일</option>`).join("")}
           </select>
-          <button data-apply="${r.key}">프리셋 적용</button>
+          ${locked ? `<span class="muted">※ 진행 중에는 수정 불가</span>` : `<span class="muted">※ 첫 진행 전까지만 수정 가능</span>`}
+        </div>
+
+        <div class="statsGrid">
+          ${statBar("스트레스", c.stats.stress, true)}
+          ${statBar("지능", c.stats.intellect)}
+          ${statBar("매력", c.stats.charm)}
+          ${statBar("체력", c.stats.strength)}
+          ${statBar("예술", c.stats.art)}
+          ${statBar("도덕", c.stats.morality)}
         </div>
       </div>
-      <div class="kv">
-        <div class="muted">호감</div><div>${r.rel.affinity}</div>
-        <div class="muted">신뢰</div><div>${r.rel.trust}</div>
-        <div class="muted">긴장</div><div>${r.rel.tension}</div>
-        <div class="muted">연정</div><div>${r.rel.romance}</div>
-      </div>
-      <div class="muted small">짝사랑은 단방향입니다(주체를 선택).</div>
-    </div>
-  `).join("");
+    `;
+  }).join("");
 
-  rows.forEach(r => {
-    const sel = els.relBox.querySelector(`select[data-preset="${r.key}"]`);
-    if (sel) sel.value = (r.rel.stage === "rivals") ? "rivals"
-                 : (r.rel.stage === "family") ? "family"
-                 : (r.rel.stage === "crush") ? "crush"
-                 : "strangers";
+  // setup 변경 핸들러
+  if (state.setupUnlocked) {
+    els.charList.querySelectorAll("input[data-name]").forEach(inp => {
+      inp.addEventListener("change", () => handlers.onUpdateCharSetup(inp.getAttribute("data-name"), { name: inp.value }));
+    });
+    els.charList.querySelectorAll("select[data-mbti]").forEach(sel => {
+      sel.addEventListener("change", () => handlers.onUpdateCharSetup(sel.getAttribute("data-mbti"), { mbti: sel.value }));
+    });
+    els.charList.querySelectorAll("select[data-zodiac]").forEach(sel => {
+      sel.addEventListener("change", () => handlers.onUpdateCharSetup(sel.getAttribute("data-zodiac"), { zodiac: sel.value }));
+    });
+    els.charList.querySelectorAll("select[data-bm]").forEach(sel => {
+      sel.addEventListener("change", () => handlers.onUpdateCharSetup(sel.getAttribute("data-bm"), { birthM: Number(sel.value) }));
+    });
+    els.charList.querySelectorAll("select[data-bd]").forEach(sel => {
+      sel.addEventListener("change", () => handlers.onUpdateCharSetup(sel.getAttribute("data-bd"), { birthD: Number(sel.value) }));
+    });
+  }
 
-    const crushSel = els.relBox.querySelector(`select[data-crushfrom="${r.key}"]`);
-    const refreshCrush = () => {
-      crushSel.style.display = (sel.value === "crush") ? "" : "none";
-    };
-    sel.addEventListener("change", refreshCrush);
-    refreshCrush();
-
-    els.relBox.querySelector(`button[data-apply="${r.key}"]`)
-      .addEventListener("click", () => {
-        handlers.onApplyPreset(r.key, sel.value, crushSel.value);
-      });
+  els.charList.querySelectorAll("button[data-rel]").forEach(btn => {
+    btn.addEventListener("click", () => handlers.onOpenRelations(btn.getAttribute("data-rel")));
+  });
+  els.charList.querySelectorAll("button[data-del]").forEach(btn => {
+    btn.addEventListener("click", () => handlers.onRemoveChar(btn.getAttribute("data-del")));
   });
 }
 
@@ -127,7 +119,7 @@ function renderSchedules(state, els) {
   els.scheduleBox.innerHTML = state.characters.map(c => `
     <div class="card">
       <div class="row" style="justify-content:space-between;">
-        <div><b>${c.name}</b></div>
+        <div><b>${escapeHtml(c.name)}</b> <span class="badge">${c.mbti}</span> <span class="badge">${c.zodiac}</span></div>
         <div class="row">
           <select data-sel="${c.id}">
             ${SCHEDULE_IDS.map(id => `<option value="${id}">${SCHEDULES[id].label}</option>`).join("")}
@@ -135,31 +127,14 @@ function renderSchedules(state, els) {
         </div>
       </div>
       <div class="muted small">
-        숙련도 —
-        공부:${c.skills.study.level},
-        노동:${c.skills.work.level},
-        휴식:${c.skills.rest.level},
-        예술:${c.skills.art.level},
-        훈련:${c.skills.train.level}
+        숙련도 — 공부:${c.skills.study.level}, 노동:${c.skills.work.level}, 휴식:${c.skills.rest.level}, 예술:${c.skills.art.level}, 훈련:${c.skills.train.level}
       </div>
     </div>
   `).join("");
 }
 
-function renderStats(state, els) {
-  els.statsBox.innerHTML = state.characters.map(c => `
-    <div class="card">
-      <div class="row" style="justify-content:space-between;">
-        <div><b>${c.name}</b></div>
-        <div class="muted small">스트레스: ${c.stats.stress}/100</div>
-      </div>
-      <div class="kv">
-        <div class="muted">지능</div><div>${c.stats.intellect}</div>
-        <div class="muted">매력</div><div>${c.stats.charm}</div>
-        <div class="muted">체력</div><div>${c.stats.strength}</div>
-        <div class="muted">예술</div><div>${c.stats.art}</div>
-        <div class="muted">도덕</div><div>${c.stats.morality}</div>
-      </div>
-    </div>
-  `).join("");
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  }[c]));
 }
